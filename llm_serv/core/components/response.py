@@ -27,17 +27,22 @@ class LLMResponse(BaseModel):
 
     @field_validator("output", mode="before")
     @classmethod
-    def _deserialize_output(cls, output):
+    def _deserialize_output(cls, output, info):
         """Deserialize the output field from JSON string back to StructuredResponse if needed."""
         if output is None:
             return None
-        if isinstance(output, str):
-            try:
-                # Try to deserialize JSON string back to StructuredResponse
-                return StructuredResponse.deserialize(output)
-            except Exception:
-                # If deserialization fails, return as string
-                return output
+        
+        # Check if we have field data available and if response_model is set
+        if isinstance(output, str) and info.data and 'request' in info.data:
+            request = info.data['request']
+            if hasattr(request, 'response_model') and request.response_model is not None:
+                try:
+                    # Try to deserialize JSON string back to StructuredResponse
+                    return StructuredResponse.deserialize(output)
+                except Exception:
+                    # If deserialization fails, return as string
+                    return output
+    
         # For StructuredResponse instances and other types, return as-is
         return output
 
